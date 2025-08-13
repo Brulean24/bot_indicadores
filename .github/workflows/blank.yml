@@ -1,11 +1,12 @@
 # Nombre de la acción que verás en GitHub
 name: Ejecutar Bot de Indicadores
 
-# Define el horario de ejecución usando una expresión cron
-# Esto significa: cada 15 minutos, todos los días
+# Define los eventos que disparan la acción
 on:
   schedule:
     - cron: '*/15 * * * *'
+  # Añade un botón para ejecutar la acción manualmente
+  workflow_dispatch:
 
 # Define los trabajos (jobs) que se ejecutarán
 jobs:
