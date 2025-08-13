@@ -35,13 +35,12 @@ jobs:
           ./configure
           sudo make
           sudo make install
-          
+
       # Paso 3: Instalar las dependencias de tu bot (librerías)
       - name: Install Python dependencies
         env:
           LD_LIBRARY_PATH: /usr/local/lib
         run: pip install -r requirements.txt
-
 
       # Paso 4: Ejecutar el script de Python con las credenciales secretas
       - name: Run the Python script
