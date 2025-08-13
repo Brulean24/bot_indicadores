@@ -26,26 +26,11 @@ jobs:
         with:
           python-version: '3.10'
 
-      # Paso 3: Instalar TA-Lib desde el código fuente
-      - name: Install TA-Lib from source
-        run: |
-          wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz
-          tar -xzf ta-lib-0.4.0-src.tar.gz
-          cd ta-lib/
-          ./configure
-          sudo make
-          sudo make install
-          
-      # Paso 4: Instalar las dependencias de tu bot (librerías)
+      # Paso 3: Instalar las dependencias de tu bot (librerías)
       - name: Install Python dependencies
-        env:
-          LD_LIBRARY_PATH: /usr/local/lib
-          TA_LIB_INCLUDE_PATH: /usr/local/include
-          TA_LIB_LIBRARY_PATH: /usr/local/lib
-          CFLAGS: "-I/usr/local/include"
         run: pip install -r requirements.txt
 
-      # Paso 5: Ejecutar el script de Python con las credenciales secretas
+      # Paso 4: Ejecutar el script de Python con las credenciales secretas
       - name: Run the Python script
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
