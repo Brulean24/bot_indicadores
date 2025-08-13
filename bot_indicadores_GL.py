@@ -201,9 +201,6 @@ def analizar_mercado(symbol: str) -> dict:
 ###############################################################################
 # FUNCIÓN PRINCIPAL
 ###############################################################################
-###############################################################################
-# FUNCIÓN PRINCIPAL
-###############################################################################
 def main():
     # 1. LLAMA A LA FUNCIÓN DEL LATIDO AL PRINCIPIO DE TODO
     enviar_latido_si_procede()
@@ -236,15 +233,15 @@ def main():
                 mensaje = f"⚠️ Potencial SHORT en {symbol} (Fuerza: {score_short}/10) | Descartado por filtro."
             enviar_telegram(mensaje)
 
-    # Imprime el resumen en la terminal
+    # Imprime el resumen en la terminal, FORZANDO la salida
     ahora_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"\nResumen del Análisis - {ahora_str}")
-    print("="*35)
-    print(f"{'Par':<10} {'LONG':<10} {'SHORT':<10}")
-    print("-"*35)
+    print(f"\nResumen del Análisis - {ahora_str}", flush=True)
+    print("="*35, flush=True)
+    print(f"{'Par':<10} {'LONG':<10} {'SHORT':<10}", flush=True)
+    print("-"*35, flush=True)
     for par, res in resultados.items():
-        print(f"{par:<10} {res['long']:<10} {res['short']:<10}")
-    print("="*35 + "\n")
+        print(f"{par:<10} {res['long']:<10} {res['short']:<10}", flush=True)
+    print("="*35 + "\n", flush=True)
 
 
 # ... (el resto de tus imports)
