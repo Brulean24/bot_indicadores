@@ -3,8 +3,9 @@ name: Ejecutar Bot de Indicadores
 
 # Define los eventos que disparan la acción
 on:
+  # El bot se reinicia automáticamente cada 6 horas
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '0 */6 * * *'
   # Añade un botón para ejecutar la acción manualmente
   workflow_dispatch:
 
@@ -13,6 +14,7 @@ jobs:
   build:
     # Sistema operativo en el que se ejecutará el código
     runs-on: ubuntu-22.04
+    timeout-minutes: 360 # Máximo tiempo de ejecución de 6 horas (360 minutos)
 
     # Pasos que se ejecutarán en el trabajo
     steps:
@@ -31,7 +33,7 @@ jobs:
         run: pip install -r requirements.txt
 
       # Paso 4: Ejecutar el script de Python con las credenciales secretas
-      - name: Run the Python script
+      - name: Run the Python script continuously
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
