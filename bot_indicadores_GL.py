@@ -259,7 +259,11 @@ if __name__ == "__main__":
     try:
         while True:
             print("Iniciando análisis de indicadores...")
+            
+            # Aquí es donde tu función principal del bot se ejecuta
             main()
+            
+            # Mensaje de confirmación y pausa
             print("Análisis completado. Esperando 15 minutos para el siguiente ciclo...")
             time.sleep(900)  # Espera 900 segundos (15 minutos)
     except Exception as e:
