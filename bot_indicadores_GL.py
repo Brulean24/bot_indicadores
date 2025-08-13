@@ -252,10 +252,11 @@ def main():
 ###############################################################################
 if __name__ == "__main__":
     try:
-        main()
-        logger.info("🤖 Análisis completado.")
+        while True:  # El bot se ejecuta en un bucle infinito
+            main()
+            logger.info("🤖 Análisis completado. Esperando 15 minutos para el siguiente ciclo.")
+            time.sleep(900)  # Espera 900 segundos (15 minutos) antes de volver a empezar
     except Exception as e:
         logger.exception("❌ Error crítico")
         enviar_telegram(f"❌ ERROR CRÍTICO EN EL BOT: {e}")
         sys.exit(1)
-
