@@ -1,0 +1,39 @@
+# Nombre de la acción que verás en GitHub
+name: Ejecutar Bot de Indicadores
+
+# Define el horario de ejecución usando una expresión cron
+# Esto significa: cada 15 minutos, todos los días
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+
+# Define los trabajos (jobs) que se ejecutarán
+jobs:
+  build:
+    # Sistema operativo en el que se ejecutará el código
+    runs-on: ubuntu-latest
+
+    # Pasos que se ejecutarán en el trabajo
+    steps:
+      # Paso 1: Descargar tu código del repositorio
+      - name: Checkout repository code
+        uses: actions/checkout@v3
+
+      # Paso 2: Configurar Python 3.10
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      # Paso 3: Instalar las dependencias de tu bot (librerías)
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+        # Este paso asume que tienes un archivo "requirements.txt" con las librerías necesarias.
+        # Si no lo tienes, puedes borrar esta sección o crearlo.
+
+      # Paso 4: Ejecutar el script de Python con las credenciales secretas
+      - name: Run the Python script
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python bot_indicadores_GL.py
