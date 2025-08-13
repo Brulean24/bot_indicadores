@@ -247,14 +247,20 @@ def main():
     print("="*35 + "\n")
 
 
+# ... (el resto de tus imports)
+import time
+# ... (el resto de tu código, funciones, etc.)
+
+
 ###############################################################################
 # EJECUCIÓN
 ###############################################################################
 if __name__ == "__main__":
     try:
-        main()
-        logger.info("🤖 Análisis completado.")
+        while True:
+            print("Iniciando análisis de indicadores...")
+            main()
+            print("Análisis completado. Esperando 15 minutos para el siguiente ciclo...")
+            time.sleep(900)  # Espera 900 segundos (15 minutos)
     except Exception as e:
-        logger.exception("❌ Error crítico")
-        enviar_telegram(f"❌ ERROR CRÍTICO EN EL BOT: {e}")
-        sys.exit(1)
+        print(f"❌ ERROR CRÍTICO EN EL BOT: {e}")
