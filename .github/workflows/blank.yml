@@ -3,9 +3,8 @@ name: Ejecutar Bot de Indicadores
 
 # Define los eventos que disparan la acción
 on:
-  # El bot se inicia de forma programada una vez cada pocas horas o una vez al día
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '*/15 * * * *'
   # Añade un botón para ejecutar la acción manualmente
   workflow_dispatch:
 
@@ -32,8 +31,7 @@ jobs:
         run: pip install -r requirements.txt
 
       # Paso 4: Ejecutar el script de Python con las credenciales secretas
-      - name: Run the Python script continuously
-        timeout-minutes: 360 # El bot se ejecutará durante 6 horas
+      - name: Run the Python script
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
