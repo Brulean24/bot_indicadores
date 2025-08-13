@@ -185,30 +185,27 @@ def analizar_mercado(symbol: str) -> dict:
 if __name__ == "__main__":
     try:
         while True:
-            # Llama a la función del latido al principio de cada ciclo
             enviar_latido_si_procede()
 
-            # Inicia el análisis
             logger.info(f"Iniciando análisis híbrido ({TIMEFRAME_PRINCIPAL} + {TIMEFRAME_TENDENCIA})...")
-            
+
             resultados = {}
             for symbol in PARES_A_ANALIZAR:
                 analisis = analizar_mercado(symbol)
                 par = symbol.split('/')[0]
-                
+
                 score_long = analisis["score_long"]
                 score_short = analisis["score_short"]
-                
+
                 resultados[par] = {"long": score_long, "short": score_short}
 
-                # Lógica de alerta transparente
                 if score_long >= FUERZA_MINIMA_ALERTA:
                     if analisis['tipo'] == 'LONG':
                         mensaje = f"✅ Señal LONG Confirmada en {symbol} | Fuerza: {score_long}/10"
                     else:
                         mensaje = f"⚠️ Potencial LONG en {symbol} (Fuerza: {score_long}/10) | Descartado por filtro."
                     enviar_telegram(mensaje)
-                    
+
                 if score_short >= FUERZA_MINIMA_ALERTA:
                     if analisis['tipo'] == 'SHORT':
                         mensaje = f"✅ Señal SHORT Confirmada en {symbol} | Fuerza: {score_short}/10"
@@ -216,20 +213,18 @@ if __name__ == "__main__":
                         mensaje = f"⚠️ Potencial SHORT en {symbol} (Fuerza: {score_short}/10) | Descartado por filtro."
                     enviar_telegram(mensaje)
 
-            # Imprime el resumen inmediatamente después del análisis usando el logger
             ahora_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            logger.info(f"\nResumen del Análisis - {ahora_str}")
-            logger.info("="*35)
-            logger.info(f"{'Par':<10} {'LONG':<10} {'SHORT':<10}")
-            logger.info("-"*35)
+            print(f"\nResumen del Análisis - {ahora_str}", flush=True)
+            print("="*35, flush=True)
+            print(f"{'Par':<10} {'LONG':<10} {'SHORT':<10}", flush=True)
+            print("-"*35, flush=True)
             for par, res in resultados.items():
-                logger.info(f"{par:<10} {res['long']:<10} {res['short']:<10}")
-            logger.info("="*35 + "\n")
-            
-            # Pausa de 15 minutos para el siguiente ciclo
-            logger.info("Análisis completado. Esperando 15 minutos para el siguiente ciclo...")
+                print(f"{par:<10} {res['long']:<10} {res['short']:<10}", flush=True)
+            print("="*35 + "\n", flush=True)
+
+            print("Análisis completado. Esperando 15 minutos para el siguiente ciclo...", flush=True)
             time.sleep(900)
-            
+
     except Exception as e:
         logger.exception("❌ Error crítico")
         enviar_telegram(f"❌ ERROR CRÍTICO EN EL BOT: {e}")
