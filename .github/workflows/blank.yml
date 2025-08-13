@@ -28,8 +28,6 @@ jobs:
       # Paso 3: Instalar las dependencias de tu bot (librerías)
       - name: Install dependencies
         run: pip install -r requirements.txt
-        # Este paso asume que tienes un archivo "requirements.txt" con las librerías necesarias.
-        # Si no lo tienes, puedes borrar esta sección o crearlo.
 
       # Paso 4: Ejecutar el script de Python con las credenciales secretas
       - name: Run the Python script
