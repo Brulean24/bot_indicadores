@@ -11,7 +11,7 @@ on:
 jobs:
   build:
     # Sistema operativo en el que se ejecutará el código
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     # Pasos que se ejecutarán en el trabajo
     steps:
