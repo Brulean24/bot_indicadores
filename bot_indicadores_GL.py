@@ -24,7 +24,7 @@ import ta
 ###############################################################################
 # PARÁMETROS DE LA ESTRATEGIA HÍBRIDA
 ###############################################################################
-TELEGRAM_TOKEN   = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 PARES_A_ANALIZAR = [
@@ -86,31 +86,22 @@ def enviar_telegram(msg: str):
         return
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     try:
-        response = requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "text": msg}, 
-timeout=10 )
+        response = requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "text": msg}, timeout=10)
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         logger.error(f"Error enviando a Telegram: {e}")
 
 def enviar_latido_si_procede():
     """Envía un mensaje 'estoy vivo' a horas específicas para confirmar que el bot funciona."""
-    # Horas específicas para enviar el latido (ej. 8:00 y 20:00)
-    horas_de_latido = [8, 20] 
+    horas_de_latido = [8, 20]
     now = datetime.now()
-    
-    # Comprueba si es la hora y si estamos en los primeros 15 minutos de la hora
     if now.hour in horas_de_latido and now.minute < 15:
-        # Usamos un archivo para no enviar el mensaje múltiples veces en la misma hora
         last_beat_file = Path(__file__).resolve().parent / "last_beat.txt"
         today_str = now.strftime("%Y-%m-%d")
-        
-        # Comprueba si ya se envió un latido para esta hora hoy
         if last_beat_file.exists():
             last_beat_data = last_beat_file.read_text()
             if f"{today_str}-{now.hour}" in last_beat_data:
-                return # Ya se envió, no hacer nada
-        
-        # Si no se ha enviado, envía el mensaje y guarda la marca de tiempo
+                return
         enviar_telegram(f"🤖✅ El bot sigue activo y analizando. Última comprobación: {now.strftime('%H:%M:%S')}")
         last_beat_file.write_text(f"{today_str}-{now.hour}")
 
@@ -121,7 +112,6 @@ def enviar_latido_si_procede():
 @retry((ccxt.NetworkError, ccxt.ExchangeError))
 def analizar_mercado(symbol: str) -> dict:
     try:
-        # 1. Descargar datos de ambas temporalidades
         ohlcv_15m = exchange.fetch_ohlcv(symbol, timeframe=TIMEFRAME_PRINCIPAL, limit=300)
         ohlcv_4h = exchange.fetch_ohlcv(symbol, timeframe=TIMEFRAME_TENDENCIA, limit=250)
 
@@ -129,48 +119,40 @@ def analizar_mercado(symbol: str) -> dict:
             logger.warning(f"Datos insuficientes para el análisis híbrido de {symbol}.")
             return {"score_long": 0, "score_short": 0, "tipo": "NONE", "fuerza": 0}
 
-        # 2. Preparar DataFrames
-        df_15m = pd.DataFrame(ohlcv_15m, columns=["ts", "open", "high", "low", "close", 
-"volume"])
-        df_4h = pd.DataFrame(ohlcv_4h, columns=["ts", "open", "high", "low", "close", 
-"volume"])
+        df_15m = pd.DataFrame(ohlcv_15m, columns=["ts", "open", "high", "low", "close", "volume"])
+        df_4h = pd.DataFrame(ohlcv_4h, columns=["ts", "open", "high", "low", "close", "volume"])
 
-        # 3. Calcular indicadores en el DataFrame principal (15m)
         df_15m["ema20"] = ta.trend.ema_indicator(df_15m["close"], 20)
-        df_15m["ema50"] = ta.trend.ema_indicator(df_15m["close"], 50) # EMA 50 es común en 15m
+        df_15m["ema50"] = ta.trend.ema_indicator(df_15m["close"], 50)
         df_15m["adx"] = ta.trend.adx(df_15m["high"], df_15m["low"], df_15m["close"], 14)
         df_15m["macd_hist"] = ta.trend.macd_diff(df_15m["close"])
         df_15m["rsi"] = ta.momentum.rsi(df_15m["close"], 14)
         df_15m["vol_sma20"] = df_15m["volume"].rolling(20).mean()
         df_15m.dropna(inplace=True)
 
-        # 4. Calcular tendencia general en el DataFrame de 4h
         df_4h["ema20"] = ta.trend.ema_indicator(df_4h["close"], 20)
         df_4h["ema200"] = ta.trend.ema_indicator(df_4h["close"], 200)
         df_4h.dropna(inplace=True)
-        
+
         tendencia_general = "NEUTRO"
         if not df_4h.empty:
-            last_4h = df_4h.iloc[-1] # Usamos la última vela de 4h disponible
+            last_4h = df_4h.iloc[-1]
             if last_4h["ema20"] > last_4h["ema200"]: tendencia_general = "ALCISTA"
             elif last_4h["ema20"] < last_4h["ema200"]: tendencia_general = "BAJISTA"
 
         if len(df_15m) < 50: return {"score_long": 0, "score_short": 0, "tipo": "NONE", "fuerza": 0}
 
-        # 5. Asegurar que se analiza la última vela CERRADA de 15m
         last = df_15m.iloc[-2]
         prev1 = df_15m.iloc[-3]
         prev2 = df_15m.iloc[-4]
 
-        # 6. Definir condiciones para LONG y SHORT en 15m
-        # Ajustamos el breakout a un periodo más corto (96 velas = 24 horas en 15m)
         cond_long = {
             "direccion": last["ema20"] > last["ema50"] and last["close"] > last["ema20"],
-            "potencia_adx": last["adx"] > 23, # Ligeramente más sensible para 15m
+            "potencia_adx": last["adx"] > 23,
             "macd_hist": (last["macd_hist"] > 0 and (prev1["macd_hist"] <= 0 or prev2["macd_hist"] <= 0)),
             "rsi_50": (last["rsi"] > 50 and (prev1["rsi"] <= 50 or prev2["rsi"] <= 50)),
-            "volumen": last["volume"] >= 1.5 * last["vol_sma20"], # Un poco más exigente con el volumen
-            "breakout": last["close"] >= 0.99 * df_15m["high"].iloc[-96:].max() # Breakout de las últimas 24h
+            "volumen": last["volume"] >= 1.5 * last["vol_sma20"],
+            "breakout": last["close"] >= 0.99 * df_15m["high"].iloc[-96:].max()
         }
         cond_short = {
             "direccion": last["ema20"] < last["ema50"] and last["close"] < last["ema20"],
@@ -181,72 +163,20 @@ def analizar_mercado(symbol: str) -> dict:
             "breakout": last["close"] <= 1.01 * df_15m["low"].iloc[-96:].min()
         }
 
-        # 7. Calcular puntuación
         pesos = [2, 2, 2, 1, 2, 1]
         score_long = sum(p for c, p in zip(cond_long.values(), pesos) if c)
         score_short = sum(p for c, p in zip(cond_short.values(), pesos) if c)
 
-        # 8. Determinar señal final, USANDO EL FILTRO DE TENDENCIA DE 4H
         tipo, fuerza = "NONE", 0
         if score_long >= FUERZA_MIN_LONG and score_long > score_short and tendencia_general in ("ALCISTA", "NEUTRO"):
             tipo, fuerza = "LONG", score_long
         elif score_short >= FUERZA_MIN_SHORT and score_short > score_long and tendencia_general in ("BAJISTA", "NEUTRO"):
             tipo, fuerza = "SHORT", score_short
-        
+
         return {"score_long": score_long, "score_short": score_short, "tipo": tipo, "fuerza": fuerza}
     except Exception as e:
         logger.error(f"Error analizando {symbol}: {e}")
         return {"score_long": 0, "score_short": 0, "tipo": "NONE", "fuerza": 0}
-
-###############################################################################
-# FUNCIÓN PRINCIPAL
-###############################################################################
-def main():
-    # 1. LLAMA A LA FUNCIÓN DEL LATIDO AL PRINCIPIO DE TODO
-    enviar_latido_si_procede()
-
-    # 2. AHORA, REEMPLAZA EL RESTO DE TU FUNCIÓN MAIN CON LA LÓGICA DE ALERTAS MEJORADA
-    logger.info(f"Iniciando análisis híbrido ({TIMEFRAME_PRINCIPAL} + {TIMEFRAME_TENDENCIA})...")
-    
-    resultados = {}
-    for symbol in PARES_A_ANALIZAR:
-        analisis = analizar_mercado(symbol)
-        par = symbol.split('/')[0]
-        
-        score_long = analisis["score_long"]
-        score_short = analisis["score_short"]
-        
-        resultados[par] = {"long": score_long, "short": score_short}
-
-        # Lógica de alerta transparente
-        if score_long >= FUERZA_MINIMA_ALERTA:
-            if analisis['tipo'] == 'LONG':
-                mensaje = f"✅ Señal LONG Confirmada en {symbol} | Fuerza: {score_long}/10"
-            else:
-                mensaje = f"⚠️ Potencial LONG en {symbol} (Fuerza: {score_long}/10) | Descartado por filtro."
-            enviar_telegram(mensaje)
-            
-        if score_short >= FUERZA_MINIMA_ALERTA:
-            if analisis['tipo'] == 'SHORT':
-                mensaje = f"✅ Señal SHORT Confirmada en {symbol} | Fuerza: {score_short}/10"
-            else:
-                mensaje = f"⚠️ Potencial SHORT en {symbol} (Fuerza: {score_short}/10) | Descartado por filtro."
-            enviar_telegram(mensaje)
-
-    # Imprime el resumen en la terminal, FORZANDO la salida
-    ahora_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"\nResumen del Análisis - {ahora_str}", flush=True)
-    print("="*35, flush=True)
-    print(f"{'Par':<10} {'LONG':<10} {'SHORT':<10}", flush=True)
-    print("-"*35, flush=True)
-    for par, res in resultados.items():
-        print(f"{par:<10} {res['long']:<10} {res['short']:<10}", flush=True)
-    print("="*35 + "\n", flush=True)
-
-
-# ... (el resto de tus imports)
-import time
-# ... (el resto de tu código, funciones, etc.)
 
 
 ###############################################################################
@@ -255,13 +185,47 @@ import time
 if __name__ == "__main__":
     try:
         while True:
-            print("Iniciando análisis de indicadores...")
-            
-            # Aquí es donde tu función principal del bot se ejecuta
-            main()
-            
-            # Mensaje de confirmación y pausa
-            print("Análisis completado. Esperando 15 minutos para el siguiente ciclo...")
-            time.sleep(900)  # Espera 900 segundos (15 minutos)
+            enviar_latido_si_procede()
+
+            logger.info(f"Iniciando análisis híbrido ({TIMEFRAME_PRINCIPAL} + {TIMEFRAME_TENDENCIA})...")
+
+            resultados = {}
+            for symbol in PARES_A_ANALIZAR:
+                analisis = analizar_mercado(symbol)
+                par = symbol.split('/')[0]
+
+                score_long = analisis["score_long"]
+                score_short = analisis["score_short"]
+
+                resultados[par] = {"long": score_long, "short": score_short}
+
+                if score_long >= FUERZA_MINIMA_ALERTA:
+                    if analisis['tipo'] == 'LONG':
+                        mensaje = f"✅ Señal LONG Confirmada en {symbol} | Fuerza: {score_long}/10"
+                    else:
+                        mensaje = f"⚠️ Potencial LONG en {symbol} (Fuerza: {score_long}/10) | Descartado por filtro."
+                    enviar_telegram(mensaje)
+
+                if score_short >= FUERZA_MINIMA_ALERTA:
+                    if analisis['tipo'] == 'SHORT':
+                        mensaje = f"✅ Señal SHORT Confirmada en {symbol} | Fuerza: {score_short}/10"
+                    else:
+                        mensaje = f"⚠️ Potencial SHORT en {symbol} (Fuerza: {score_short}/10) | Descartado por filtro."
+                    enviar_telegram(mensaje)
+
+            ahora_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"\nResumen del Análisis - {ahora_str}", flush=True)
+            print("="*35, flush=True)
+            print(f"{'Par':<10} {'LONG':<10} {'SHORT':<10}", flush=True)
+            print("-"*35, flush=True)
+            for par, res in resultados.items():
+                print(f"{par:<10} {res['long']:<10} {res['short']:<10}", flush=True)
+            print("="*35 + "\n", flush=True)
+
+            print("Análisis completado. Esperando 15 minutos para el siguiente ciclo...", flush=True)
+            time.sleep(900)
+
     except Exception as e:
-        print(f"❌ ERROR CRÍTICO EN EL BOT: {e}")
+        logger.exception("❌ Error crítico")
+        enviar_telegram(f"❌ ERROR CRÍTICO EN EL BOT: {e}")
+        sys.exit(1)
